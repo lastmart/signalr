@@ -33,6 +33,7 @@ namespace BadNews
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddSignalR();
+            services.AddServerSideBlazor();
             services.AddSingleton<INewsRepository, NewsIndexedRepository>();
             services.AddSingleton<INewsModelBuilder, NewsModelBuilder>();
             services.AddSingleton<IValidationAttributeAdapterProvider, StopWordsAttributeAdapterProvider>();
@@ -60,18 +61,7 @@ namespace BadNews
 
             app.UseHttpsRedirection();
             app.UseResponseCompression();
-            app.UseStaticFiles(new StaticFileOptions()
-            {
-                OnPrepareResponse = options =>
-                {
-                    options.Context.Response.GetTypedHeaders().CacheControl =
-                        new Microsoft.Net.Http.Headers.CacheControlHeaderValue()
-                        {
-                            Public = false,
-                            MaxAge = TimeSpan.FromDays(1)
-                        };
-                }
-            });
+            app.UseStaticFiles();
             app.UseSerilogRequestLogging();
             app.UseStatusCodePagesWithReExecute("/StatusCode/{0}");
 
@@ -80,6 +70,7 @@ namespace BadNews
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapHub<CommentsHub>("/commentsHub");
+                endpoints.MapBlazorHub();
                 endpoints.MapControllerRoute("status-code", "StatusCode/{code?}", new
                 {
                     controller = "Errors",

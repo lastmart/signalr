@@ -1,0 +1,71 @@
+@using BadNews.Repositories.Comments
+@using Microsoft.AspNetCore.SignalR.Client
+@inject CommentsRepository commentsRepository;
+@inject NavigationManager navigationManager
+@implements IAsyncDisposable
+<div>
+    <label>
+        Пользователь: <input @bind="userInput"/>
+    </label>
+    <label>
+        Сообщение: <input @bind="messageInput"/>
+    </label>
+    <div>
+        <button @onclick="Send">Отправить</button>
+    </div>
+    @foreach (var comment in comments)
+    {
+        <li>@RenderComment(comment)</li>
+    }
+</div>
+
+@code {
+    private HubConnection hubConnection;
+    private List<Comment> comments = new();
+
+    private string userInput;
+    private string messageInput;
+
+    [Parameter]
+    public Guid ArticleId { get; set; }
+
+    public override Task SetParametersAsync(ParameterView parameters)
+    {
+        comments = commentsRepository.GetComments(ArticleId).ToList();
+        return base.SetParametersAsync(parameters);
+    }
+    
+    protected override async Task OnInitializedAsync()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(navigationManager.ToAbsoluteUri("/commentsHub"))
+            .Build();   
+        
+        hubConnection.On<string, string>("ReceiveComment", (user, message) =>
+        {
+            var comment = new Comment(user, message);
+            comments.Add(comment);
+            StateHasChanged();
+        });
+
+        await hubConnection.StartAsync().ConfigureAwait(false);
+    }
+
+    private async Task Send()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.SendAsync("SendComment", userInput, messageInput);
+        }
+    }
+    
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+
+    private string RenderComment(Comment comment) => $"{comment.User} говорит: {comment.Value}";
+}

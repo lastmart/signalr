@@ -1,4 +1,5 @@
-﻿@using BadNews.Elevation
+﻿@using BadNews.BlazorComponents
+@using BadNews.Elevation
 @model BadNews.Models.News.FullArticleModel
 
 <main role="main" class="container">
@@ -26,17 +27,8 @@
         </aside>
     </div>
 
-    <label>
-        Пользователь <input id="userInput">
-    </label>
-    <label>
-        Комментарий <input id="commentInput">
-    </label>
-    <div>
-        <button id="sendButton">Отправить</button>
-    </div>
-
     <div id="comments" />
+    @(await Html.RenderComponentAsync<Comments>(RenderMode.ServerPrerendered))
 </main>
 
 <footer class="news-footer">
@@ -44,46 +36,3 @@
         <a href="#">Наверх</a>
     </p>
 </footer>
-
-<script src="/lib/jquery/dist/jquery.min.js"></script>
-<script src="/js/signalr/dist/browser/signalr.js"></script>
-<script type="text/javascript">
-    $.get(`/api/news/@Model.Article.Id.ToString()/comments`, function (data) {
-        const commentsDiv = document.getElementById('comments');
-
-        for (const comment of data.comments) {
-            const li = document.createElement("li");
-            li.textContent = `${comment.user} говорит: ${comment.value}`;
-            commentsDiv.appendChild(li);
-        }
-    });
-
-    const connection = new signalR.HubConnectionBuilder().withUrl("/commentsHub").build();
-
-    //Disable send button until connection is established
-    document.getElementById("sendButton").disabled = true;
-
-    connection.on("ReceiveComment", function (user, message) {
-        const li = document.createElement("li");
-        document.getElementById("comments").appendChild(li);
-        // We can assign user-supplied strings to an element's textContent because it
-        // is not interpreted as markup. If you're assigning in any other way, you 
-        // should be aware of possible script injection concerns.
-        li.textContent = `${user} говорит: ${message}`;
-    });
-
-    connection.start().then(function () {
-        document.getElementById("sendButton").disabled = false;
-    }).catch(function (err) {
-        return console.error(err.toString());
-    });
-
-    document.getElementById("sendButton").addEventListener("click", function (event) {
-        const user = document.getElementById("userInput").value;
-        const message = document.getElementById("commentInput").value;
-        connection.invoke("SendComment", user, message).catch(function (err) {
-            return console.error(err.toString());
-        });
-        event.preventDefault();
-    });
-</script>
